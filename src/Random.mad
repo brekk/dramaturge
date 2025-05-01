@@ -1,0 +1,6 @@
+import Random from "Random"
+
+
+
+chance :: Integer -> Random -> Boolean
+export chance = (i, r) => Random.integer(0, i, r) == 0

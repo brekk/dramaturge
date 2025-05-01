@@ -1,0 +1,32 @@
+import type { DateInfo, DateTime } from "Date"
+
+import Date from "Date"
+import Dict from "Dictionary"
+import String from "String"
+
+
+
+// Translation - name - mapping
+// export type Translation k v = Locale(String, Dictionary k v)
+
+formatDate :: (DateInfo -> String) -> DateTime -> String
+export formatDate = (formatter, d) => pipe(
+  Date.toDateInfo,
+  formatter,
+)(d)
+
+display :: Integer -> Integer -> String
+display = (i, x) => {
+  raw = show(x)
+  while(String.length(raw) < i) do {
+    raw := "0" ++ raw
+  }
+  return raw
+}
+
+export FORMATS = {
+  english: where {
+    { day, hours, minutes, year, month } =>
+      `${display(2, hours)}:${display(2, minutes)} ${hours > 12 ? "PM" : "AM"}`
+  },
+}

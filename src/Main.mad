@@ -1,0 +1,218 @@
+import type { DateTime } from "Date"
+import type { Maybe } from "Maybe"
+
+import type { StreamEvent } from "@/Stream"
+
+import Date from "Date"
+import Fn from "Function"
+import IO from "IO"
+import List from "List"
+import { Just, Nothing, fromMaybe } from "Maybe"
+import Random from "Random"
+import Stream from "Stream"
+import String from "String"
+import { ansiColor } from "Terminal"
+import { Wish, fulfill } from "Wish"
+
+import { colorize, contrastBlack, seededAnsi, toTupleFloat } from "Dye"
+import { ANSI_BACKGROUND, ANSI_FOREGROUND, FULL_COLOR_CHANNEL } from "Dye/Constants"
+import { colorFromSeed } from "Dye/Random"
+
+import { FORMATS, formatDate } from "@/Date"
+import { chance } from "@/Random"
+import { newName } from "@/RandomName"
+import { Iteration, Quitteration, Shitteration, wishFromStream } from "@/Stream"
+
+
+
+// alias PersonData = {
+//   name :: String,
+//   username :: String
+// }
+//
+// alias MessageData = { timestamp :: Integer, author:: PersonData }
+//
+// alias GameState = {
+//   seq:: List Message
+// }
+
+export type Person = Person(Random, String)
+export type Message = Message(String, DateTime, Person)
+export type ObservableMessage = ObservableMessage(Boolean, Message)
+export hi = (p) => ObservableMessage(false, Message("hi", Date.now(), p))
+
+export type HiFi = HiFi(Random, List Person, List ObservableMessage)
+
+getMessages :: HiFi -> List ObservableMessage
+getMessages = where {
+  HiFi(_, _, msgs) =>
+    msgs
+}
+
+seedFromRandom = (x) => pipe(
+  colorFromSeed,
+  where {
+    #[r, g, b] =>
+      do {
+        blackChannel = pipe(
+          toTupleFloat,
+          contrastBlack,
+        )(#[r, g, b])
+          ? 0
+          : FULL_COLOR_CHANNEL
+        return pipe(
+          map(show),
+          String.join(""),
+        )([
+          ANSI_FOREGROUND,
+          2,
+          blackChannel,
+          blackChannel,
+          blackChannel,
+          ANSI_BACKGROUND,
+          2,
+          r,
+          g,
+          b,
+        ])
+      }
+  },
+)(x)
+
+// "◗"
+
+renderPerson :: Person -> String
+renderPerson = (person) => where(person) {
+  Person(rr, username) =>
+    colorize(show(rr.get()), "@" ++ username)
+}
+
+renderMessage :: ObservableMessage -> String
+renderMessage = (m) => where(m) {
+  ObservableMessage(_, Message(msg, date, person)) =>
+    `${renderPerson(person)} [${formatDate(FORMATS.english, date)}]: ${msg}`
+}
+
+sayHi :: Maybe Person -> HiFi -> HiFi
+export sayHi = (someone, state) => where(#[someone, state]) {
+  #[Just(peep), HiFi(rr, peeps, msgs)] =>
+    do {
+      return HiFi(rr, peeps, List.append(hi(peep), msgs))
+    }
+
+  #[_, HiFi(rr, peeps, msgs)] =>
+    where(Random.pick(peeps, rr)) {
+      Just(person) =>
+        HiFi(rr, peeps, List.append(hi(person), msgs))
+
+      _ =>
+        HiFi(rr, peeps, msgs)
+    }
+}
+
+export markSeen = where {
+  ObservableMessage(_, x) =>
+    ObservableMessage(true, x)
+}
+
+seen = where {
+  ObservableMessage(x, _) =>
+    x
+}
+
+unseen = where {
+  ObservableMessage(x, _) =>
+    !x
+}
+
+markTopMessageSeen :: HiFi -> HiFi
+markTopMessageSeen = where {
+  HiFi(rr, peeps, mess) =>
+    pipe(
+      List.reject(seen),
+      List.first,
+      map(markSeen),
+      where {
+        Just(x) =>
+          List.concat([x], List.slice(1, List.length(mess), mess))
+
+        Nothing =>
+          mess
+      },
+      HiFi(rr, peeps),
+    )(mess)
+}
+
+
+
+printState :: HiFi -> String
+printState = where {
+  HiFi(r, _, msgs) =>
+    pipe(
+      List.filter(unseen),
+      map(renderMessage),
+      String.join("\n"),
+    )(msgs)
+}
+
+printLatestState = where {
+  HiFi(r, _, msgs) =>
+    pipe(
+      List.filter(unseen),
+      List.last,
+      map(renderMessage),
+      fromMaybe(""),
+    )(msgs)
+}
+
+HEXADECIMAL = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
+
+simulation :: String -> Stream {} Integer -> {} -> {}
+simulation = (seedString, stream) => {
+  chaos = Random.generateFromString(seedString)
+  subchaos = () => pipe(
+    List.repeatWith((_) => Random.pick(HEXADECIMAL, chaos)),
+    map(fromMaybe("")),
+    String.join(""),
+    Random.generateFromString,
+  )(10)
+
+  human = (x) => Person(subchaos(), x)
+
+  rando = () => {
+    x = subchaos()
+    return Person(x, newName(x))
+  }
+  randos = List.repeatWith(rando, 10)
+
+  state = HiFi(chaos, List.concat(map(human, ["brekk", "Mihai Todor", "arjit"]), randos), [])
+  yo = sayHi(Nothing)
+  barf = IO.pTrace("something bad happened")
+  iterate = (v) => {
+    x = printLatestState(state)
+    if (x != "") {
+      IO.put(x ++ "\n")
+    }
+
+    // IO.log(printState(state))
+    lightning = chance(10, chaos)
+    state := if (lightning) {
+      yo(state)
+    } else do {
+      update = markTopMessageSeen(state)
+      // IO.pTrace("huh", getMessages(update))
+      return update
+    }
+  }
+  end = () => IO.log("The simulation is over")
+  listenTo = Stream.subscribe(barf, iterate, end)
+  cancel = listenTo(stream)
+  return cancel
+}
+
+main = () => {
+  stream = Stream.interval(1000)
+
+
+  simulation("onebiz", stream)
+}
