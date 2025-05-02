@@ -15,18 +15,23 @@ export formatDate = (formatter, d) => pipe(
   formatter,
 )(d)
 
-display :: Integer -> Integer -> String
-display = (i, x) => {
-  raw = show(x)
-  while(String.length(raw) < i) do {
-    raw := "0" ++ raw
-  }
-  return raw
-}
+zr = pipe(
+  show,
+  String.padStart('0', 2),
+)
 
+// h = eve ? _h - 12 : _h
 export FORMATS = {
   english: where {
-    { day, hours, minutes, year, month } =>
-      `${display(2, hours)}:${display(2, minutes)} ${hours > 12 ? "PM" : "AM"}`
+    { hours: _h, minutes: _m } =>
+      `${zr(_h % 12)}:${zr(_m)} ${_h > 12 ? "PM" : "AM"}`
+  },
+  englishWithSeconds: where {
+    { hours: _h, minutes: _m, seconds: _s } =>
+      `${zr(_h % 12)}:${zr(_m)}:${zr(_s)} ${_h > 12 ? "PM" : "AM"}`
+  },
+  military: where {
+    { hours: _h, minutes: _m } =>
+      `${zr(_h)}:${zr(_m)}`
   },
 }

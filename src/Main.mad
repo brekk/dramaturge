@@ -84,13 +84,18 @@ seedFromRandom = (x) => pipe(
 renderPerson :: Person -> String
 renderPerson = (person) => where(person) {
   Person(rr, username) =>
-    colorize(show(rr.get()), "@" ++ username)
+    colorize(
+      show(rr.get()),
+      pipe(
+        String.padStart(' ', 23),
+      )("@" ++ username ++ " "),
+    )
 }
 
 renderMessage :: ObservableMessage -> String
 renderMessage = (m) => where(m) {
   ObservableMessage(_, Message(msg, date, person)) =>
-    `${renderPerson(person)} [${formatDate(FORMATS.english, date)}]: ${msg}`
+    `${renderPerson(person)} [${formatDate(FORMATS.englishWithSeconds, date)}]: ${msg}`
 }
 
 sayHi :: Maybe Person -> HiFi -> HiFi
@@ -183,19 +188,23 @@ simulation = (seedString, stream) => {
     x = subchaos()
     return Person(x, newName(x))
   }
-  randos = List.repeatWith(rando, 10)
+  randos = List.repeatWith(rando, 2)
 
-  state = HiFi(chaos, List.concat(map(human, ["brekk", "Mihai Todor", "arjit"]), randos), [])
+  state = HiFi(chaos, List.concat(map(human, ["brekk", "mihai", "arjit"]), randos), [])
   yo = sayHi(Nothing)
+  cursor = ""
   barf = IO.pTrace("something bad happened")
   iterate = (v) => {
+    // 
     x = printLatestState(state)
-    if (x != "") {
+    if (x != cursor && x != "") {
       IO.put(x ++ "\n")
     }
+    cursor := x
 
     // IO.log(printState(state))
     lightning = chance(10, chaos)
+    // /*
     state := if (lightning) {
       yo(state)
     } else do {
@@ -203,6 +212,7 @@ simulation = (seedString, stream) => {
       // IO.pTrace("huh", getMessages(update))
       return update
     }
+    // */
   }
   end = () => IO.log("The simulation is over")
   listenTo = Stream.subscribe(barf, iterate, end)
@@ -211,8 +221,7 @@ simulation = (seedString, stream) => {
 }
 
 main = () => {
-  stream = Stream.interval(1000)
-
+  stream = Stream.interval(100)
 
   simulation("onebiz", stream)
 }
