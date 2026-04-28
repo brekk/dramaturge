@@ -4,23 +4,22 @@ import { Wish } from "Wish"
 
 
 
-export type StreamEvent bad good = Iteration(good) | Shitteration(bad) | Quitteration
-
-export wishFromStream = (G, B, E, stream) => {
+export type StreamEvent b g = Iteration(g) | Shitteration(b) | Quitteration
+export wishFromStream = (good, bad, end, stream) => {
   events = []
   push = List.append($, events)
   return Wish(
-    (bad, good) => {
+    (badPath, goodPath) => {
       fail = (e) => {
-        events := push(B(e))
-        bad(events)
+        events := push(bad(e))
+        badPath(events)
       }
       iterate = (v) => {
-        events := push(G(v))
+        events := push(good(v))
       }
       cease = () => {
-        events := push(E)
-        good(events)
+        events := push(end)
+        goodPath(events)
       }
       Stream.subscribe(fail, iterate, cease)(stream)
       return () => {}

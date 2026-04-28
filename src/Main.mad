@@ -14,9 +14,9 @@ import String from "String"
 import { ansiColor } from "Terminal"
 import { Wish, fulfill } from "Wish"
 
-import { colorize, contrastBlack, seededAnsi, toTupleFloat } from "Dye"
-import { ANSI_BACKGROUND, ANSI_FOREGROUND, FULL_COLOR_CHANNEL } from "Dye/Constants"
-import { colorFromSeed } from "Dye/Random"
+import { colorize, contrastBlack, seededAnsi, toTupleFloat } from "dye"
+import { ANSI_BACKGROUND, ANSI_FOREGROUND, FULL_COLOR_CHANNEL } from "dye/Constants"
+import { colorFromSeed } from "dye/Random"
 
 import { FORMATS, formatDate } from "@/Date"
 import { chance } from "@/Random"
@@ -200,6 +200,9 @@ simulation = (seedString, stream) => {
     if (x != cursor && x != "") {
       IO.put(x ++ "\n")
     }
+
+
+
     cursor := x
 
     // IO.log(printState(state))
